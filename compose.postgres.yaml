@@ -1,0 +1,45 @@
+# Local PostgreSQL integration environment. Never commit the real .env.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: airr
+      POSTGRES_PASSWORD: ${AIRR_DB_PASSWORD:?Set AIRR_DB_PASSWORD in a local .env file}
+      POSTGRES_DB: airr
+    ports:
+      - '127.0.0.1:55432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airr -d airr"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://airr:${AIRR_DB_PASSWORD:?Set a DB password}@db:5432/airr
+      AIRR_SOURCE_KEY: ${AIRR_SOURCE_KEY:?Set a random source key}
+      AIRR_REVIEWER_KEY: ${AIRR_REVIEWER_KEY:?Set a distinct random reviewer key}
+      AIRR_CLASSIFIER_MODE: rules
+      AIRR_ENABLE_EXTERNAL_DELIVERY: 'false'
+    ports:
+      - '127.0.0.1:8000:8000'
+  worker:
+    build: .
+    profiles: [manual-worker]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://airr:${AIRR_DB_PASSWORD:?Set a DB password}@db:5432/airr
+      AIRR_SOURCE_KEY: ${AIRR_SOURCE_KEY:?Set a random source key}
+      AIRR_REVIEWER_KEY: ${AIRR_REVIEWER_KEY:?Set a distinct random reviewer key}
+      AIRR_CLASSIFIER_MODE: rules
+      AIRR_ENABLE_EXTERNAL_DELIVERY: 'false'
+    command: ["python", "-m", "airr.worker", "classify"]
+volumes:
+  pgdata:

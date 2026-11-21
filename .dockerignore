@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+*.log
+*.jsonl
+__pycache__
+.pytest_cache
+.venv
+private-qa
+private-agent
+private-learning
+private-release
